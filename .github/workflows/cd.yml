@@ -26,12 +26,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Ensure providers are registered (best-effort)
-        run: |
-          az provider register --namespace Microsoft.App
-          az provider register --namespace Microsoft.OperationalInsights
-          az provider register --namespace Microsoft.ContainerRegistry
-
       - name: Deploy/Update Infrastructure (Bicep)
         run: |
           az deployment group create \
