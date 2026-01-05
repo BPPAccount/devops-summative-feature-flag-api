@@ -1,5 +1,5 @@
 
-# BP0315785 DevOps Summative – Feature Flag API
+# BP0315785 DevOps Summative: Feature Flag API
 
 A Feature Flag API used to demonstrate an end-to-end DevOps delivery capability: CI testing, container build and publication, Infrastructure as Code provisioning, and automated deployment to Azure Container Apps.
 
