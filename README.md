@@ -153,7 +153,7 @@ Steps:
 2. Log in to Azure using `AZURE_CREDENTIALS`
 3. Deploy/update infrastructure using Bicep (`infra/main.bicep`)
 4. Build a container image and push it to **GitHub Container Registry (GHCR)**
-5. Update the Azure Container App to the new image
+5. Update the Azure Container App to the new image.
 6. Smoke test the deployed service via `GET /health`
 
 Images are published to GHCR using a commit SHA tag:
