@@ -1,0 +1,81 @@
+name: CD (Deploy to Azure Container Apps)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python (for tests)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies and run tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pytest -q
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ensure providers are registered (best-effort)
+        run: |
+          az provider register --namespace Microsoft.App
+          az provider register --namespace Microsoft.OperationalInsights
+          az provider register --namespace Microsoft.ContainerRegistry
+
+      - name: Deploy/Update Infrastructure (Bicep)
+        run: |
+          az deployment group create \
+            --resource-group devops-sum-rg \
+            --name main \
+            --template-file infra/main.bicep \
+            --parameters location=uksouth prefix=devopssum adminToken='${{ secrets.ADMIN_TOKEN }}'
+
+      - name: Read deployment outputs (ACR + URL)
+        id: outputs
+        run: |
+          ACR_NAME=$(az deployment group show --resource-group devops-sum-rg --name main --query properties.outputs.acrNameOut.value -o tsv)
+          ACR_SERVER=$(az deployment group show --resource-group devops-sum-rg --name main --query properties.outputs.acrLoginServer.value -o tsv)
+          APP_URL=$(az deployment group show --resource-group devops-sum-rg --name main --query properties.outputs.appUrl.value -o tsv)
+
+          echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "acr_server=$ACR_SERVER" >> $GITHUB_OUTPUT
+          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+
+      - name: Build container image in ACR (no local Docker)
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          az acr build --registry ${{ steps.outputs.outputs.acr_name }} --image feature-flag-api:${IMAGE_TAG} .
+
+      - name: Deploy new image to Container Apps
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          az containerapp update \
+            --name devopssum-api \
+            --resource-group devops-sum-rg \
+            --image "${{ steps.outputs.outputs.acr_server }}/feature-flag-api:${IMAGE_TAG}"
+
+      - name: Smoke test /health
+        run: |
+          echo "App URL: ${{ steps.outputs.outputs.app_url }}"
+          for i in {1..30}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.outputs.outputs.app_url }}/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check OK"
+              curl -s "${{ steps.outputs.outputs.app_url }}/health"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying..."
+            sleep 5
+          done
+          echo "Health check failed"
+          exit 1
