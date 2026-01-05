@@ -1,29 +1,22 @@
 param location string = 'uksouth'
 param prefix string = 'devopssum'
+
 @secure()
 param adminToken string
 
-// Use a public placeholder image for the very first bootstrap.
-// Your pipeline will later update this to your built image.
-param bootstrapImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+param ghcrUsername string
+@secure()
+param ghcrToken string
 
-var acrName = toLower('${prefix}acr${uniqueString(resourceGroup().id)}')
+// First deployment needs some image value; CD workflow will immediately update it.
+param bootstrapImage string = 'ghcr.io/bppaccount/devops-summative-feature-flag-api:bootstrap'
 
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${prefix}-logs'
   location: location
   properties: {
     sku: { name: 'PerGB2018' }
-    retentionInDays: 30
-  }
-}
-
-resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
-  name: acrName
-  location: location
-  sku: { name: 'Basic' }
-  properties: {
-    adminUserEnabled: true
+    retentionInDays: 7
   }
 }
 
@@ -41,11 +34,6 @@ resource env 'Microsoft.App/managedEnvironments@2023-05-01' = {
   }
 }
 
-var acrCreds = acr.listCredentials()
-var acrUser = acrCreds.username
-var acrPass = acrCreds.passwords[0].value
-var acrServer = acr.properties.loginServer
-
 resource app 'Microsoft.App/containerApps@2023-05-01' = {
   name: '${prefix}-api'
   location: location
@@ -59,13 +47,13 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
       }
       registries: [
         {
-          server: acrServer
-          username: acrUser
-          passwordSecretRef: 'acr-pwd'
+          server: 'ghcr.io'
+          username: ghcrUsername
+          passwordSecretRef: 'ghcr-token'
         }
       ]
       secrets: [
-        { name: 'acr-pwd', value: acrPass }
+        { name: 'ghcr-token', value: ghcrToken }
         { name: 'admin-token', value: adminToken }
       ]
     }
@@ -86,7 +74,5 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
   }
 }
 
-output acrLoginServer string = acrServer
-output acrNameOut string = acr.name
 output appFqdn string = app.properties.configuration.ingress.fqdn
 output appUrl string = 'https://${app.properties.configuration.ingress.fqdn}'
