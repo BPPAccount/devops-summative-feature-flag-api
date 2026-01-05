@@ -16,7 +16,7 @@ resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   location: location
   properties: {
     sku: { name: 'PerGB2018' }
-    retentionInDays: 7
+    retentionInDays: 30
   }
 }
 
