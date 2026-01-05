@@ -5,7 +5,7 @@ A Feature Flag API used to demonstrate an end-to-end DevOps delivery capability:
 
 This application remains intentionally simplistic so that delivery controls (CI/CD, IaC, secrets, and runtime verification) are clearly observable.
 
-## What this service does
+### What this service does
 
 The API exposes a small set of endpoints:
 
@@ -23,7 +23,7 @@ The API exposes a small set of endpoints:
 
 Flags are stored in-memory (no persistence). This is deliberate for the assignment scope and keeps the focus on delivery automation.
 
-## Repository structure
+### Repository structure
 
 - `src/` – FastAPI application (`src/app.py`)
 - `tests/` – pytest tests
@@ -31,15 +31,15 @@ Flags are stored in-memory (no persistence). This is deliberate for the assignme
 - `.github/workflows/` – CI and CD workflows
 - `Dockerfile` – container build definition
 
-## Local development
+### Local development
 
-### Prerequisites
+#### Prerequisites
 
 - Python 3.12+
 - pip
 - (Optional) curl or PowerShell for API calls
 
-### Setup
+#### Setup
 
 Create and activate a virtual environment, then install dependencies:
 
@@ -60,7 +60,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Run the API locally
+#### Run the API locally
 
 Set an admin token (required for PUT/DELETE), then start the server:
 
@@ -83,21 +83,21 @@ Open:
 * [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
 * [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) (Swagger UI)
 
-### Quick API usage
+#### Quick API usage
 
-#### Health
+###### Health
 
 ```bash
 curl -s http://127.0.0.1:8000/health
 ```
 
-#### Get a flag (404 if missing)
+###### Get a flag (404 if missing)
 
 ```bash
 curl -s http://127.0.0.1:8000/flags/demo
 ```
 
-#### Put a flag (admin)
+###### Put a flag (admin)
 
 ```bash
 curl -s -X PUT "http://127.0.0.1:8000/flags/demo" \
@@ -106,14 +106,14 @@ curl -s -X PUT "http://127.0.0.1:8000/flags/demo" \
   -d '{"value": true}'
 ```
 
-#### Delete a flag (admin)
+###### Delete a flag (admin)
 
 ```bash
 curl -s -X DELETE "http://127.0.0.1:8000/flags/demo" \
   -H "Authorization: Bearer change-me"
 ```
 
-## Container build (optional)
+### Container build (optional)
 
 This repository includes a `Dockerfile` that packages the service as a container and runs as a non-root user.
 
@@ -124,11 +124,11 @@ docker build -t feature-flag-api:dev .
 docker run --rm -p 8000:8000 -e ADMIN_TOKEN=change-me feature-flag-api:dev
 ```
 
-## CI/CD overview
+### CI/CD overview
 
 This repository uses GitHub Actions:
 
-### CI (`.github/workflows/ci.yml`)
+#### CI (`.github/workflows/ci.yml`)
 
 Runs on:
 
@@ -141,7 +141,7 @@ Steps:
 * Install dependencies
 * Run `pytest`
 
-### CD (`.github/workflows/cd.yml`)
+#### CD (`.github/workflows/cd.yml`)
 
 Runs on:
 
@@ -160,11 +160,11 @@ Images are published to GHCR using a commit SHA tag:
 
 * `ghcr.io/bppaccount/devops-summative-feature-flag-api:<sha>`
 
-### Why GHCR is private
+#### Why GHCR is private
 
 The GHCR package is **private** to model organisational artefact access control and to avoid public distribution of deployable artefacts. Because the image is private, Azure Container Apps authenticates to GHCR using registry credentials stored as secrets and configured via IaC.
 
-## Azure infrastructure (IaC)
+### Azure infrastructure (IaC)
 
 Infrastructure is defined in `infra/main.bicep` and includes:
 
@@ -179,7 +179,7 @@ Infrastructure is defined in `infra/main.bicep` and includes:
 
 > Note: The template uses a `bootstrapImage` because an image reference is required when creating the Container App resource. The CD pipeline immediately updates the image to the commit-tagged build.
 
-## Required GitHub Secrets (for CD)
+### Required GitHub Secrets (for CD)
 
 Create these repository secrets under:
 **Settings → Secrets and variables → Actions → New repository secret**
@@ -196,7 +196,7 @@ Create these repository secrets under:
 * `GHCR_TOKEN`
   Token with `write:packages` (push) and `read:packages` (pull) as required by your setup.
 
-## Running the deployed service
+### Running the deployed service
 
 After CD completes successfully, the workflow prints the public app URL and performs a smoke test on:
 
