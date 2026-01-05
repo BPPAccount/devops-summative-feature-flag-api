@@ -47,12 +47,13 @@ jobs:
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-      - name: Deploy new image to Container Apps
+      - name: Deploy new image to Container Apps (set commit SHA env vars)
         run: |
           az containerapp update \
             --name devopssum-api \
             --resource-group devops-sum-rg \
-            --image "$IMAGE"
+            --image "$IMAGE" \
+            --set-env-vars COMMIT_SHA=${{ github.sha }} APP_VERSION=${{ github.sha }}
 
       - name: Get app URL
         id: url
