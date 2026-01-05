@@ -7,6 +7,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,40 +37,37 @@ jobs:
             --resource-group devops-sum-rg \
             --name main \
             --template-file infra/main.bicep \
-            --parameters location=uksouth prefix=devopssum adminToken='${{ secrets.ADMIN_TOKEN }}'
+            --parameters location=uksouth prefix=devopssum adminToken='${{ secrets.ADMIN_TOKEN }}' ghcrUsername='${{ secrets.GHCR_USERNAME }}' ghcrToken='${{ secrets.GHCR_TOKEN }}'
 
-      - name: Read deployment outputs (ACR + URL)
-        id: outputs
+      - name: Build and push image to GHCR
         run: |
-          ACR_NAME=$(az deployment group show --resource-group devops-sum-rg --name main --query properties.outputs.acrNameOut.value -o tsv)
-          ACR_SERVER=$(az deployment group show --resource-group devops-sum-rg --name main --query properties.outputs.acrLoginServer.value -o tsv)
-          APP_URL=$(az deployment group show --resource-group devops-sum-rg --name main --query properties.outputs.appUrl.value -o tsv)
-
-          echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
-          echo "acr_server=$ACR_SERVER" >> $GITHUB_OUTPUT
-          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
-
-      - name: Build container image in ACR (no local Docker)
-        run: |
-          IMAGE_TAG=${{ github.sha }}
-          az acr build --registry ${{ steps.outputs.outputs.acr_name }} --image feature-flag-api:${IMAGE_TAG} .
+          IMAGE="ghcr.io/${{ secrets.GHCR_USERNAME }}/devops-summative-feature-flag-api:${{ github.sha }}"
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Deploy new image to Container Apps
         run: |
-          IMAGE_TAG=${{ github.sha }}
           az containerapp update \
             --name devopssum-api \
             --resource-group devops-sum-rg \
-            --image "${{ steps.outputs.outputs.acr_server }}/feature-flag-api:${IMAGE_TAG}"
+            --image "$IMAGE"
+
+      - name: Get app URL
+        id: url
+        run: |
+          FQDN=$(az containerapp show --name devopssum-api --resource-group devops-sum-rg --query properties.configuration.ingress.fqdn -o tsv)
+          echo "app_url=https://$FQDN" >> $GITHUB_OUTPUT
 
       - name: Smoke test /health
         run: |
-          echo "App URL: ${{ steps.outputs.outputs.app_url }}"
+          echo "App URL: ${{ steps.url.outputs.app_url }}"
           for i in {1..30}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.outputs.outputs.app_url }}/health" || true)
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.url.outputs.app_url }}/health" || true)
             if [ "$STATUS" = "200" ]; then
               echo "Health check OK"
-              curl -s "${{ steps.outputs.outputs.app_url }}/health"
+              curl -s "${{ steps.url.outputs.app_url }}/health"
               exit 0
             fi
             echo "Attempt $i: status=$STATUS, retrying..."
