@@ -1,9 +1,9 @@
 
 # BP0315785 DevOps Summative – Feature Flag API
 
-A minimal Feature Flag API used to demonstrate an end-to-end DevOps delivery capability: CI testing, container build and publication, Infrastructure as Code provisioning, and automated deployment to Azure Container Apps.
+A Feature Flag API used to demonstrate an end-to-end DevOps delivery capability: CI testing, container build and publication, Infrastructure as Code provisioning, and automated deployment to Azure Container Apps.
 
-This project is intentionally small at the application layer so that delivery controls (CI/CD, IaC, secrets, and runtime verification) are clearly observable.
+This application remains intentionally simplistic so that delivery controls (CI/CD, IaC, secrets, and runtime verification) are clearly observable.
 
 ## What this service does
 
