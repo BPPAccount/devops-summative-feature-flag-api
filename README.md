@@ -16,7 +16,7 @@ The API exposes a small set of endpoints:
   Returns a stored feature flag value.
 
 - `PUT /flags/{key}` (admin only)  
-  Upserts a flag value.
+  Upserts a flag value
 
 - `DELETE /flags/{key}` (admin only)  
   Deletes a flag.
